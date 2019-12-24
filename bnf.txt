@@ -1,0 +1,39 @@
+<variable> ::= $SHELL | $HOME | $USER | $EUID
+
+<letter> ::= a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|
+             A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z|
+	         0|1|2|3|4|5|6|7|8|9|'-'|'/'|'_'|'.'|<variable>
+
+<end_char> ::= ';' | '&'
+
+<sep_character> ::= <end_char>
+
+<redirect_output> ::= '>>' | '>'
+
+
+
+<word> ::= <letter> {<letter>}
+
+<word_list> ::= <word> {<word>}
+
+<file_name> ::= <word_list>
+
+<shielded_string> ::= '\"' <word_list> '\"' | '\'' <word_list> '\''
+
+<argument> ::= <word> | <shielded_string>
+
+<redirect> ::= '<' <file_name> | <redirect_output> <file_name> | '<' <file_name> <redirect_output> <file_name> |
+
+
+
+<simple_command> ::= <file_name> {<argument>} <redirect>
+
+<command> ::= <simple_command>
+
+<conveyor> ::= <command> {'|' <command>}
+
+<end_of_list> ::= <end_char> |
+
+<command_list> ::= <conveyor> { <sep_character> <conveyor> } <end_of_list>
+
+<shell_command> ::= <command_list>

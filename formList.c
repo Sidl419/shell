@@ -17,6 +17,7 @@ int c;          // текущий символ
 char str[N];
 int curstr = N;
 int end_of_file = 0;
+int is_error_list = 0;
 
 static jmp_buf jmp_stop;
 
@@ -35,10 +36,38 @@ void * less();
 void * lbracket();
 void * rbracket();
 void * error();
-void * quotation();
+void * quotation1();
+void * quotation2();
 void * slash();
 void * hash();
 void * variable();
+void * errorlist();
+
+void reverse(char s[]){
+    int i, j;
+    char c;
+ 
+    for (i = 0, j = strlen(s)-1; i<j; i++, j--) {
+        c = s[i];
+        s[i] = s[j];
+        s[j] = c;
+    }
+}
+
+void myitoa(int n, char s[]){
+    int i, sign;
+ 
+    if ((sign = n) < 0)  /* записываем знак */
+        n = -n;          /* делаем n положительным числом */
+    i = 0;
+    do {       /* генерируем цифры в обратном порядке */
+        s[i++] = n % 10 + '0';   /* берем следующую цифру */
+    }while ((n /= 10) > 0);     /* удаляем */
+    if (sign < 0)
+        s[i++] = '-';
+    s[i] = '\0';
+    reverse(s);
+}
 
 int symcnt = N;     // фактическое количество символов, считанных в буфер
 
@@ -76,7 +105,10 @@ void* start(){
         char cprev = c;
         nullbuf();
         if(cprev == '\"'){
-            return quotation;
+            return quotation2;
+        }
+        if(cprev == '\''){
+            return quotation1;
         }
         if(cprev == '\\'){
             return slash;
@@ -142,7 +174,9 @@ void* word(){
             case ';':
                 break;
             case '\"':
-                return quotation;
+                return quotation2;
+            case '\'':
+                return quotation1;
             case '\\':
                 return slash;
             default:
@@ -159,42 +193,63 @@ void* word(){
 }
 
 void* variable(){
-    char s[5];
-    s[4] = ' ';
-    char buf1[PATH_MAX];
-    char* buf;
-    int i = 0;
+    char s[6];
+    char* buf = NULL;
+    int i = 0, f = 0;
+
     c = getsym();
-    while(c <= 'Z' && c >= 'A'){
+    while(c <= 'Z' && c >= 'A' && i < 5){
         s[i] = c;
+        if(i == 3 && strncmp(s, "SHEL", 4)){
+            c = getsym();
+            break;
+        }
         ++i;
         c = getsym();
     }
     
-    if(strcmp(s, "SHELL"))
-        buf = getcwd(buf1, PATH_MAX);
-    else
-        if(strcmp(s, "HOME "))
+    if(!strcmp(s, "SHELL"))
+        buf = getenv("SHELL");
+    else{
+        s[4] = ' ';
+        if(!strcmp(s, "HOME "))
             buf = getenv("HOME");
         else
-            if(strcmp(s, "EUID "))
-                buf = geteuid();
-            else
-                if(strcmp(s, "USER "))
+            if(!strcmp(s, "EUID ")){
+                int n = 0, a, b = geteuid();
+                a = b;
+                while(b != 0){
+                    b /= 10;
+                    ++n;
+                }
+                buf = (char*)malloc((n + 1) * sizeof(char));
+                myitoa(a, buf);
+                f = 1;
+            }else
+                if(!strcmp(s, "USER "))
                     buf = getlogin();
                 else
                 {
-                    /* code */
+                    printf("Variable(s) does not exist\n");
+                    return errorlist;
                 }
-    
-    for(int j = 0; j < strlen(buf); ++j){
-        c = s[j];
-        addsym(c);
     }
 
-    c = getsym();
+    char a;
+    
+    for(int j = 0; j < strlen(buf); ++j){
+        a = buf[j];
+        addsym(a);
+    }
 
-    return word;
+    if(f) free(buf);
+
+    if(c == '\n' || c == EOF){
+        addword();
+        return start;
+    }else{
+        return word;
+    }
 }
 
 void* hash(){
@@ -216,10 +271,22 @@ void* slash(){
     return word;
 }
 
-void* quotation(){
+void* quotation2(){
     c = getsym();
 
     while(c != '\"'){
+        addsym(c);
+        c = getsym();
+    }
+
+    c = getsym();
+    return word;
+}
+
+void* quotation1(){
+    c = getsym();
+
+    while(c != '\''){
         addsym(c);
         c = getsym();
     }
@@ -302,3 +369,13 @@ void* and2(){
 void* stop(){
     longjmp(jmp_stop, 1); 
 } 
+
+void* errorlist(){
+    is_error_list = 1;
+    addword();
+    termlist();
+    while((c != '\n') && (c != EOF))
+        c = getsym();
+    clearlist();
+    return stop;
+}

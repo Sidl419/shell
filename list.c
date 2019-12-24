@@ -131,7 +131,8 @@ int symset(int c){
            (c != '&') && 
            (c != '<') && 
            (c != '(') &&
-           (c != ')') &&  
+           (c != ')') && 
+           (c != ';') && 
            (c != EOF);
 } 
 
@@ -143,5 +144,46 @@ void printlist(){   // печать списка слов
     printf("%d\n", sizelist - 1);   // печать размера списка
     for(i = 0; i < sizelist - 1; i++)   // печать элементов списка
         printf("%s ", lst[i]);
-    //printf("\n");
+}
+
+list exportlist(){
+    if(lst == NULL) return NULL;
+
+    list prev, exp = (list)malloc(sizeof(listnode));
+    exp->word = lst[0];
+    exp->next = NULL;
+    prev = exp;
+
+    for(int i = 1; i < sizelist - 1; i++){
+        list temp = (list)malloc(sizeof(listnode));
+        temp->word = lst[i];
+        temp->next = NULL;
+        prev->next = temp;
+        prev = temp; 
+    }
+
+    return exp;
+}
+
+void printformat(list print){
+
+    if(print == NULL) return;
+
+    list temp = print;
+    while(temp != NULL){   // печать элементов списка
+        printf("%s ", temp->word);
+        temp = temp->next;
+    }
+}
+
+void clearformat(list l){
+    if(l != NULL){
+        list prev, temp = l;
+        while(temp != NULL){
+            prev = temp;
+            temp = temp->next;
+            free(prev);
+        }
+        l = NULL;
+    }
 }
