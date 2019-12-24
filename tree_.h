@@ -31,6 +31,6 @@ typedef struct cmd_inf treenode;
 
 void print_tree(tree, int);
 tree build_tree(list);
-void clear_tree(tree);
+void clear_tree(tree *);
 
 #endif

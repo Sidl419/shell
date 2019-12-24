@@ -144,6 +144,7 @@ tree build_tree(list lst){
     if(lst == NULL){
         return NULL;
     }
+    s = NULL;
     plex = lst;
     vertex1 V = begin(plex);
     while(!end_flag)
@@ -167,6 +168,12 @@ int is_word(char* a){
             case '0'...'9':
                 break;
             case ' ':
+                break;
+            case '\\':
+                break;
+            case '(':
+                break;
+            case ')':
                 break;
             case '.':
                 break;
@@ -255,7 +262,8 @@ void* out1(list cur){
 void* out2(list cur){
     plex = cur;
     if(is_word(cur->word)){
-        c->outfile = cur->word;
+        if(c->outfile == NULL)
+            c->outfile = cur->word;
         c->append = 1;
         return conv(cur->next);
     }
@@ -294,27 +302,22 @@ void* end(){
     return begin;
 }
 
-void clear_tree(tree tr){
-    if(tr == NULL){
+void clear_tree(tree *tr){
+    tree tempt = *tr; 
+    if(tempt == NULL){
         return;
-    }
-    tree prevt, tempt = tr;;
-    while(tempt != NULL){
-        prevt = tempt;
-        tempt = tempt->pipe;
-        if(tr->argv != NULL){
-            list prev, temp = tr->argv;
-            while(temp != NULL){
-                prev = temp;
-                temp = temp->next;
-                free(prev);
-            }
-            tr->argv = NULL;
+    } 
+    if(tempt->argv != NULL){
+        list prev, temp = tempt->argv;
+        while(temp != NULL){
+            prev = temp;
+            temp = temp->next;
+            free(prev);
         }
-        if(tr->next != NULL){
-            clear_tree(tr->next);
-        }
-        free(prevt);
+        tempt->argv = NULL;
     }
-    tr = NULL;
+    clear_tree(&(tempt->pipe));
+    clear_tree(&(tempt->next));
+    free(tempt);
+    *tr = NULL;
 }

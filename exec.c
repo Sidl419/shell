@@ -10,6 +10,7 @@
 #include "formList.h"
 
 int error_in_com = 0;
+int size = 0;
 intlist intlst = NULL;
 intlist *bckgrnd = &intlst;
 
@@ -55,7 +56,7 @@ int exec_exit(tree tr){
 void add_elem (intlist * lst, int elem){
     if(lst == NULL) return;
     intlist temp = (intlist)malloc(sizeof(intlistnode));
-    int size = 1;
+    //int size = 1;
     temp->pid = elem;
     temp->next = NULL;
     if(*lst == NULL){
@@ -63,12 +64,12 @@ void add_elem (intlist * lst, int elem){
     }else{
         intlist cur = *lst;
         while(cur->next != NULL){
-            ++size;
+            //++size;
             cur = cur->next;
         }
         cur->next = temp;
     }
-    printf("[%d] %d\n", size, elem);
+    //printf("[%d] %d\n", size, elem);
 }
 
 void print_intlist(intlist lst){
@@ -87,6 +88,7 @@ int clear_intlist(intlistnode * node){
 
     int status;
     if(waitpid(node->pid, &status, WNOHANG) != 0){
+        size--;
         free(node);
         node = NULL;
         return 1;
@@ -165,7 +167,7 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid, 
         if(tr->backgrnd == 0){
             if(is_pipe)
                 *pid = 0;
-            return exec_cd(tr);
+            return 0;
         }else{
             if(!(ch_pid = fork())){
                 close(0);
@@ -201,7 +203,7 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid, 
         if(tr->backgrnd == 0){
             if(is_pipe)
                 *pid = 0;
-            return exec_exit(tr);
+            return 0;
         }else{
             if(!(ch_pid = fork())){
                 close(0);
@@ -243,6 +245,7 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid, 
         waitpid(ch_pid, &status, 0);
         return WEXITSTATUS(status);
     }else{
+        *pid = ch_pid;
         add_elem(lst, ch_pid);
         return 0;
     }
@@ -253,14 +256,16 @@ int exec_conv(tree tr, int len){
 
     int back = tr->backgrnd;
     int res, fd[2];
+    int wait_pid = 0;
 
     if(len == 1){
-        res = exec_simple_com(tr, 0, 0, 0, 0, bckgrnd);
+        res = exec_simple_com(tr, 0, 0, 0, &wait_pid, bckgrnd);
+        if(back)
+            printf("[%d] %d\n", ++size, wait_pid);
         return res;
     }
 
     tree temp = tr;
-    int wait_pid;
     
     int* pid_list = (int*)malloc(len * sizeof(int));
 
@@ -271,6 +276,10 @@ int exec_conv(tree tr, int len){
     int in = next_in;
     pid_list[0] = wait_pid;
     temp = temp->pipe;
+
+    if(back){
+        printf("[%d] %d\n", ++size, wait_pid);
+    }
 
     for(int i = 1; i < len - 1; ++i){
         close(out);

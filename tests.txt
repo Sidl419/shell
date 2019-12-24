@@ -1,16 +1,17 @@
 1) a>>>
-2) Test >>>a
-3) Test a;;;
-4) Test a|>a
-5) Test echo d sdf r r sd r |cat -n echo d sdf r r sd r
-6) Test "a"b"c"d"e"
-7) Test a;b;c;d|&ls
-8) Test ls>>a>>A
-9) Quotes can be single '
-10) echo a| echo ""
-11) Test echo "\"
-12) a|b|c|d|e&
-13) sleep 10|pwd &
-14) sleep 10 ctrl+C
-15) c
-16) yes|cd|cat
+2) >>>a
+3) a;;;
+4) a|>a
+5) echo d sdf r r sd r "\(sdsd\n\)" |cat -n
+6) echo d sdf r r sd r (sdsd)|cat n
+7) "a"b"c"d"e"
+8) a;b;c;d|&ls
+9) ls>>a>>A
+10) Quotes can be single '
+11) echo a| echo ""
+12) word echo "\"
+13) a|b|c|d|e& --------+
+14) c
+15) sleep 10|pwd &
+16) sleep 10 ctrl+C
+17) yes|cd|cat
