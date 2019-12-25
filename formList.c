@@ -274,7 +274,11 @@ void* slash(){
 void* quotation2(){
     c = getsym();
     if(c == '\\'){
+        char p = c;
         c = getsym();
+        if(c != '\"'){
+            addsym(p);
+        }
         addsym(c);
         c = getsym();
     }
@@ -283,7 +287,11 @@ void* quotation2(){
         addsym(c);
         c = getsym();
         if(c == '\\'){
+            char p = c;
             c = getsym();
+            if(c != '\"'){
+                addsym(p);
+            }
             addsym(c);
             c = getsym();
         }
@@ -296,7 +304,11 @@ void* quotation2(){
 void* quotation1(){
     c = getsym();
     if(c == '\\'){
+        char p = c;
         c = getsym();
+        if(c != '\''){
+            addsym(p);
+        }
         addsym(c);
         c = getsym();
     }
@@ -305,7 +317,11 @@ void* quotation1(){
         addsym(c);
         c = getsym();
         if(c == '\\'){
+            char p = c;
             c = getsym();
+            if(c != '\''){
+                addsym(p);
+            }
             addsym(c);
             c = getsym();
         }

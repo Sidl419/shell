@@ -56,7 +56,7 @@ int exec_exit(tree tr){
 void add_elem (intlist * lst, int elem){
     if(lst == NULL) return;
     intlist temp = (intlist)malloc(sizeof(intlistnode));
-    //int size = 1;
+    int size = 1;
     temp->pid = elem;
     temp->next = NULL;
     if(*lst == NULL){
@@ -64,12 +64,12 @@ void add_elem (intlist * lst, int elem){
     }else{
         intlist cur = *lst;
         while(cur->next != NULL){
-            //++size;
+            ++size;
             cur = cur->next;
         }
         cur->next = temp;
     }
-    //printf("[%d] %d\n", size, elem);
+    printf("[%d] %d\n", size, elem);
 }
 
 void print_intlist(intlist lst){
@@ -83,14 +83,16 @@ void print_intlist(intlist lst){
     printf("\n");
 }
 
-int clear_intlist(intlistnode * node){
+int clear_intlist(int * info, intlistnode * node){
     if(node == NULL) return 1;
 
     int status;
+    *info = 0;
     if(waitpid(node->pid, &status, WNOHANG) != 0){
         size--;
         free(node);
         node = NULL;
+        *info = status;
         return 1;
     }else 
         return 0;
@@ -98,12 +100,12 @@ int clear_intlist(intlistnode * node){
 
 void clear_zombie(intlist * lst){
     if(lst == NULL) return;
-    int size = 1, is_first = 1;
+    int status, size = 1, is_first = 1;
     if(*lst != NULL){
         intlist prev, next, cur = *lst;
         while(cur != NULL){
             next = cur->next;
-            if(!clear_intlist(cur)){
+            if(!clear_intlist(&status, cur)){
                 if(is_first){
                     lst = &cur;
                     is_first = 0;
@@ -115,7 +117,7 @@ void clear_zombie(intlist * lst){
                 prev->next = NULL;
             }else{
                 cur = next;
-                printf("[%d] Done\n", size);
+                printf("[%d] Exit code: %d\n", size, WEXITSTATUS(status));
             }
             ++size;
         }
@@ -129,17 +131,23 @@ void chng_iofiles(int is_pipe, int in_pipe, int out_pipe, tree tr){
     if(tr == NULL) return;
 
     if(is_pipe == 1){
+
         close(in_pipe);
         dup2(out_pipe,1);
         close(out_pipe);
+
     }else if(is_pipe == 2){
+
         dup2(in_pipe,0);
         close(in_pipe);
         dup2(out_pipe,1);
         close(out_pipe);
+
     } else if(is_pipe == 3){
+
         dup2(in_pipe,0);
         close(in_pipe);
+
     }
 
     if(tr->infile != NULL){
@@ -159,71 +167,40 @@ void chng_iofiles(int is_pipe, int in_pipe, int out_pipe, tree tr){
     }
 }
 
-int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid, intlist * lst){
+int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid){
     if(tr == NULL) return -1;
+
     char *prog_name = tr->argv->word;
     int status, ch_pid;
+
     if(!strcmp(prog_name, "cd")){
-        if(tr->backgrnd == 0){
-            if(is_pipe)
-                *pid = 0;
+        if(is_pipe){
+            *pid = 1;
             return 0;
-        }else{
-            if(!(ch_pid = fork())){
-                close(0);
-                signal(SIGINT, SIG_IGN);
-                int ch_res = exec_cd(tr);
-                exit(ch_res);
-            }
-            add_elem(lst, ch_pid);
-            return 0;
-        }
+        }else
+            return exec_cd(tr);
     }
+
     if(!strcmp(prog_name, "pwd")){
         int out_desc = 1;
         if(is_pipe == 1 || is_pipe == 2){
             out_desc = out_pipe;
         }
-        if(tr->backgrnd == 0){
-            if(is_pipe)
-                *pid = 0;
-            return exec_pwd(tr, out_desc);
-        }else{
-            if(!(ch_pid = fork())){
-                close(0);
-                signal(SIGINT, SIG_IGN);
-                int ch_res = exec_pwd(tr, out_desc);
-                exit(ch_res);
-            }
-            add_elem(lst, ch_pid);
-            return 0;
-        }
+        if(is_pipe)
+            *pid = 1;
+        return exec_pwd(tr, out_desc);
     }
+
     if(!strcmp(prog_name, "exit")){
-        if(tr->backgrnd == 0){
-            if(is_pipe)
-                *pid = 0;
-            return 0;
-        }else{
-            if(!(ch_pid = fork())){
-                close(0);
-                signal(SIGINT, SIG_IGN);
-                int ch_res = exec_exit(tr);
-                exit(ch_res);
-            }
-            add_elem(lst, ch_pid);
-            return 0;
-        }
-    }
-    if(!(ch_pid = fork())){
-        if(tr->backgrnd){
-            close(0);
-            signal(SIGINT, SIG_IGN);
-        }
-
         if(is_pipe){
+            *pid = 1;
+            return 0;
+        }else
+            return exec_exit(tr);
+    }
 
-        }
+    if(!(ch_pid = fork())){
+
         chng_iofiles(is_pipe, in_pipe, out_pipe, tr);
 
         char * count_args[tr->argc + 1];
@@ -233,88 +210,91 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid, 
             args = args->next;
         }
         count_args[tr->argc] = NULL;
+        
         execvp(count_args[0], count_args);
-        printf("Error in command: %s \n", count_args[0]);
+        perror(count_args[0]);
         exit(1);
     }
-    if(tr->backgrnd == 0){
-        if(is_pipe){
-            *pid = ch_pid;
-            return 0;
-        }
-        waitpid(ch_pid, &status, 0);
-        return WEXITSTATUS(status);
-    }else{
-        *pid = ch_pid;
-        add_elem(lst, ch_pid);
+
+    if(is_pipe){
+        *pid = 0;
         return 0;
     }
+    waitpid(ch_pid, &status, 0);
+    return WEXITSTATUS(status);
 }
 
 int exec_conv(tree tr, int len){
     if(tr == NULL) return -1;
 
-    int back = tr->backgrnd;
-    int res, fd[2];
-    int wait_pid = 0;
+    int res, fd[2], ch_pid, if_wait = 0, back = tr->backgrnd;
 
     if(len == 1){
-        res = exec_simple_com(tr, 0, 0, 0, &wait_pid, bckgrnd);
-        if(back)
-            printf("[%d] %d\n", ++size, wait_pid);
-        return res;
+        char *prog_name = tr->argv->word;
+        if(!strcmp(prog_name, "cd"))
+            return exec_cd(tr);
+        if(!strcmp(prog_name, "pwd"))
+            return exec_pwd(tr, 1);
+        if(!strcmp(prog_name, "exit"))
+            return exec_exit(tr);
     }
 
-    tree temp = tr;
-    
-    int* pid_list = (int*)malloc(len * sizeof(int));
-
-    pipe(fd);
-    int out = fd[1], next_in = fd[0];
-    
-    res = exec_simple_com(temp, next_in, out, 1, &wait_pid, bckgrnd);
-    int in = next_in;
-    pid_list[0] = wait_pid;
-    temp = temp->pipe;
-
-    if(back){
-        printf("[%d] %d\n", ++size, wait_pid);
-    }
-
-    for(int i = 1; i < len - 1; ++i){
-        close(out);
-        pipe(fd);
-        out = fd[1];
-        next_in = fd[0];
-
-        res = exec_simple_com(temp, in, out, 2, &wait_pid, bckgrnd);
-        pid_list[i] = wait_pid;
-        temp = temp->pipe;
-        close(in);
-        in = next_in;
-    }
-
-    close(out);
-    res = exec_simple_com(temp, in, 1, 3, &wait_pid, bckgrnd);
-    pid_list[len - 1] = wait_pid;
-    close(in);
-
-    int status;
-    if(!back){
-        for(int i = 0; i < len; ++i){
-            if(pid_list[i] != 0){
-                waitpid(pid_list[i], &status, 0);
-            }
+    if(!(ch_pid = fork())){
+        if(back){
+            close(0);
+            signal(SIGINT, SIG_IGN);
         }
+
+        if(len == 1){
+            res = exec_simple_com(tr, 0, 0, 0, &if_wait);
+            exit(res);
+        }
+
+        tree temp = tr;
+        
+        int pid_count = 0;
+
+        pipe(fd);
+        int out = fd[1], next_in = fd[0];
+        
+        res = exec_simple_com(temp, next_in, out, 1, &if_wait);
+        int in = next_in;
+        pid_count += if_wait;
+        temp = temp->pipe;
+
+        for(int i = 1; i < len - 1; ++i){
+            close(out);
+            pipe(fd);
+            out = fd[1];
+            next_in = fd[0];
+
+            res = exec_simple_com(temp, in, out, 2, &if_wait);
+            pid_count += if_wait;
+            temp = temp->pipe;
+            close(in);
+            in = next_in;
+        }
+
+        close(out);
+        res = exec_simple_com(temp, in, 1, 3, &if_wait);
+        pid_count += if_wait;
+        close(in);
+
+        for(int i = 0; i < len - pid_count; ++i){
+            waitpid(0, NULL, 0);
+        }
+
+        exit(res);
     }
 
-    free(pid_list);
-    
-
-    if(!back)
+    if(!back){
+        int status;
+        waitpid(ch_pid, &status, 0);
         return WEXITSTATUS(status);
-    else
+    }else{
+        add_elem(bckgrnd, ch_pid);
         return 0;
+    }
 }
 
 int len_conv(tree tr){

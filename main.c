@@ -62,6 +62,7 @@ int main(){
         
         tr = NULL;
         tr = build_tree(lexlist);
+        
         if(is_error_tree){
             clear_tree(&tr);
             clearformat(lexlist);

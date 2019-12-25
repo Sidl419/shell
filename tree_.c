@@ -177,6 +177,12 @@ int is_word(char* a){
                 break;
             case '.':
                 break;
+            case '\n':
+                break;
+            case '\'':
+                break;
+            case '\"':
+                break;
             default:
                 return 0;
         }
