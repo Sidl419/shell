@@ -1,5 +1,5 @@
 PROG = shell
-CFLAGS = -g -Wall -fsanitize=address
+CFLAGS = -g -Wall
 CC = gcc
 
 $(PROG): main.c list.o exec.o formList.o tree_.o
