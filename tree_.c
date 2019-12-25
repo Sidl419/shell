@@ -80,6 +80,7 @@ build_tree(), список list – это массив указателей н�
 tree s; /* начальная команда, лучше назвать ее beg_cmd, это локальная переменная функции build_tree() */
 tree c; /* текущая команда, лучше назвать ее cur_cmd, локальная переменная функции build_tree()*/
 tree p; /* предыдущая команда, лучше назвать ее prev_cmd, тоже локальная */
+tree lastseq;
 
 tree make_cmd(){ /* создает дерево из одного элемента, обнуляет все поля */
     tree tr;
@@ -104,9 +105,13 @@ void make_bgrnd(tree t){ /* устанавливает поле backgrnd=1 во 
         return;
     }
     t->backgrnd = 1;
+    if(t->type != NXT)
+        make_bgrnd(t->next);
     tree curt = t->pipe;
     while(curt != NULL){
         curt->backgrnd = 1;
+        if(t->type != NXT)
+            make_bgrnd(curt->next);
         curt = curt->pipe;
     }
 }
@@ -139,6 +144,8 @@ void * out1(list);
 void * out2(list);
 void * errortree(list);
 void * seq(list);
+void * andtr2(list);
+void * ortr2(list);
 
 tree build_tree(list lst){
     if(lst == NULL){
@@ -194,6 +201,7 @@ void* begin(list cur){
     plex = cur;
     if(is_word(cur->word)){
         c = make_cmd();
+        lastseq = c;
         s = c;
         add_arg();
         p = c;
@@ -206,9 +214,36 @@ void* seq(list cur){
     plex = cur;
     if(is_word(cur->word)){
         c = make_cmd();
+        lastseq = c;
         add_arg();
         p->next = c;
         p->type = NXT;
+        p = c;
+        return conv(cur->next);
+    }
+    return errortree(cur);
+}
+
+void* andtr2(list cur){
+    plex = cur;
+    if(is_word(cur->word)){
+        c = make_cmd();
+        add_arg();
+        p->next = c;
+        p->type = AND;
+        p = c;
+        return conv(cur->next);
+    }
+    return errortree(cur);
+}
+
+void* ortr2(list cur){
+    plex = cur;
+    if(is_word(cur->word)){
+        c = make_cmd();
+        add_arg();
+        p->next = c;
+        p->type = OR;
         p = c;
         return conv(cur->next);
     }
@@ -239,6 +274,12 @@ void* conv(list cur){
     }
     if(strlen(cur->word) == 2 && cur->word[0] == '>' && cur->word[1] == '>'){
         return out2(cur->next);
+    }
+    if(strlen(cur->word) == 2 && cur->word[0] == '&' && cur->word[1] == '&'){
+        return andtr2(cur->next);
+    }
+    if(strlen(cur->word) == 2 && cur->word[0] == '|' && cur->word[1] == '|'){
+        return ortr2(cur->next);
     }
     if(is_word(cur->word)){
         add_arg();
@@ -279,7 +320,7 @@ void* out2(list cur){
 void* backgrnd(list cur){
     plex = cur;
     if(cur == NULL){
-        make_bgrnd(s);
+        make_bgrnd(lastseq);
         return end();
     }
     return errortree(cur);
@@ -313,15 +354,7 @@ void clear_tree(tree *tr){
     if(tempt == NULL){
         return;
     } 
-    if(tempt->argv != NULL){
-        list prev, temp = tempt->argv;
-        while(temp != NULL){
-            prev = temp;
-            temp = temp->next;
-            free(prev);
-        }
-        tempt->argv = NULL;
-    }
+    clearformat(&(tempt->argv));
     clear_tree(&(tempt->pipe));
     clear_tree(&(tempt->next));
     free(tempt);

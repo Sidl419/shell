@@ -14,6 +14,7 @@ extern intlist *bckgrnd;
 extern jmp_buf begin1;
 extern int exit_val;
 extern int error_in_com;
+extern int cur_working_proc;
 
 void add_elem (intlist *, int);
 void print_intlist(intlist);
@@ -28,7 +29,7 @@ int exec_exit(tree);
 void chng_iofiles(int, int, int, tree);
 int exec_com_sh(tree);
 int exec_com_list(tree, int);
-int exec_conv(tree, int);
+int exec_conv(tree, int, int *);
 //int exec_command(tree, int, int, int, int , intlist *);
 int exec_simple_com(tree, int, int, int, int *);
 

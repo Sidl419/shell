@@ -1,5 +1,5 @@
 PROG = shell
-CFLAGS = -g -Wall
+CFLAGS = -g -Wall -fsanitize=address -fno-omit-frame-pointer
 CC = gcc
 
 $(PROG): main.c list.o exec.o formList.o tree_.o

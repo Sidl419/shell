@@ -176,14 +176,14 @@ void printformat(list print){
     }
 }
 
-void clearformat(list l){
-    if(l != NULL){
-        list prev, temp = l;
+void clearformat(list * l){
+    list prev, temp = *l;
+    if(temp != NULL){
         while(temp != NULL){
             prev = temp;
             temp = temp->next;
             free(prev);
         }
-        l = NULL;
+        *l = NULL;
     }
 }

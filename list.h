@@ -32,6 +32,6 @@ int lexcomp(char *a, char *b);
 void sortlist();
 list exportlist();
 void printformat(list);
-void clearformat(list);
+void clearformat(list *);
 
 #endif

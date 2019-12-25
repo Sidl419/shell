@@ -11,6 +11,7 @@
 
 int error_in_com = 0;
 int size = 0;
+int cur_working_proc;
 intlist intlst = NULL;
 intlist *bckgrnd = &intlst;
 
@@ -159,9 +160,9 @@ void chng_iofiles(int is_pipe, int in_pipe, int out_pipe, tree tr){
     if(tr->outfile != NULL){
         int outf;
         if(tr->append)
-            outf = open(tr->outfile, O_WRONLY | O_APPEND | O_CREAT | O_TRUNC, 0666);
+            outf = open(tr->outfile, O_WRONLY | O_APPEND | O_CREAT, 0666);
         else
-            outf = open(tr->outfile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            outf = open(tr->outfile, O_WRONLY | O_CREAT, 0666);
         dup2(outf, 1);
         close(outf);
     }
@@ -201,6 +202,10 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid){
 
     if(!(ch_pid = fork())){
 
+        if(!(tr->backgrnd)){
+            cur_working_proc = ch_pid;
+        }
+
         chng_iofiles(is_pipe, in_pipe, out_pipe, tr);
 
         char * count_args[tr->argc + 1];
@@ -221,13 +226,15 @@ int exec_simple_com(tree tr, int in_pipe, int out_pipe, int is_pipe, int * pid){
         return 0;
     }
     waitpid(ch_pid, &status, 0);
+    if(!(tr->backgrnd))
+        cur_working_proc = 0;
     return WEXITSTATUS(status);
 }
 
-int exec_conv(tree tr, int len){
+int exec_conv(tree tr, int len, int *stat){
     if(tr == NULL) return -1;
 
-    int res, fd[2], ch_pid, if_wait = 0, back = tr->backgrnd;
+    int ch_pid, if_wait = 0;
 
     if(len == 1){
         char *prog_name = tr->argv->word;
@@ -240,10 +247,7 @@ int exec_conv(tree tr, int len){
     }
 
     if(!(ch_pid = fork())){
-        if(back){
-            close(0);
-            signal(SIGINT, SIG_IGN);
-        }
+        int res, fd[2];
 
         if(len == 1){
             res = exec_simple_com(tr, 0, 0, 0, &if_wait);
@@ -287,14 +291,10 @@ int exec_conv(tree tr, int len){
         exit(res);
     }
 
-    if(!back){
-        int status;
-        waitpid(ch_pid, &status, 0);
-        return WEXITSTATUS(status);
-    }else{
-        add_elem(bckgrnd, ch_pid);
-        return 0;
-    }
+    int status;
+    waitpid(ch_pid, &status, 0);
+    *stat = status;
+    return WEXITSTATUS(status);
 }
 
 int len_conv(tree tr){
@@ -310,6 +310,62 @@ int len_conv(tree tr){
     return len;
 }
 
+int exec_com_seq(tree tr){
+    if(tr == NULL) return -1;
+
+    int back = tr->backgrnd;
+
+    if(!back){
+
+        int res, inf;
+        tree temp = tr;
+
+        res = exec_conv(temp, len_conv(temp), &inf);
+
+        while(temp->type != NXT && temp->next != NULL){
+            if(temp->type == AND && !WIFSIGNALED(inf) && WIFEXITED(inf) && (WEXITSTATUS(inf) == 0)){
+                temp = temp->next;
+                res = exec_conv(temp, len_conv(temp), &inf);
+            }
+            if(temp->type == OR && !WIFSIGNALED(inf) && WIFEXITED(inf) && (WEXITSTATUS(inf) != 0)){
+                temp = temp->next;
+                res = exec_conv(temp, len_conv(temp), &inf);
+            }
+            break;
+        }
+        return res;
+    }else{
+        int ch_pid;
+
+        if(!(ch_pid = fork())){
+        
+            close(0);
+            signal(SIGINT, SIG_IGN);
+
+            int res, inf;
+            tree temp = tr;
+
+            res = exec_conv(temp, len_conv(temp), &inf);
+
+            while(temp->type != NXT && temp->next != NULL){
+                if(temp->type == AND && !WIFSIGNALED(inf) && WIFEXITED(inf) && (WEXITSTATUS(inf) == 0)){
+                    temp = temp->next;
+                    res = exec_conv(temp, len_conv(temp), &inf);
+                }
+                if(temp->type == OR && !WIFSIGNALED(inf) && WIFEXITED(inf) && (WEXITSTATUS(inf) != 0)){
+                    temp = temp->next;
+                    res = exec_conv(temp, len_conv(temp), &inf);
+                }
+                break;
+            }
+            exit(res);
+        }
+
+        add_elem(bckgrnd, ch_pid);
+        return 0;
+    }
+}
+
 int exec_com_list(tree tr, int len){
     if(tr == NULL) return -1;
 
@@ -317,7 +373,7 @@ int exec_com_list(tree tr, int len){
     tree temp = tr;
 
     for(int i = 0; i < len; ++i){
-        res = exec_conv(temp, len_conv(temp));
+        res = exec_com_seq(temp);
         temp = temp->next;
     }
     
@@ -331,7 +387,8 @@ int exec_com_sh(tree tr){
     tree temp = tr;
     while(temp->next != NULL){
         temp = temp->next;
-        ++len;
+        if(temp->type == NXT && temp->next != NULL)
+            ++len;
     }
 
     res = exec_com_list(tr, len);
