@@ -18,6 +18,7 @@ char str[N];
 int curstr = N;
 int end_of_file = 0;
 int is_error_list = 0;
+int is_sigint;
 
 static jmp_buf jmp_stop;
 
@@ -81,6 +82,10 @@ int getsym(){   // возвращает символ из входного по�
 
 void formList(){
     vertex1 V = start;
+    if(is_sigint){ 
+        c = getsym();
+        is_sigint = 0;
+    }
     c = getsym();
     null_list();
     while(!setjmp(jmp_stop))

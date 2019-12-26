@@ -13,3 +13,10 @@
 13) sleep 10|pwd &
 14) sleep 10 ctrl+C
 15) yes|cd|cat
+16) sleep 5 || sleep 15 && sleep 10 &
+17) sleep 5 && sleep 15 &
+18) false && echo word
+19) true && echo word
+20) true || echo word
+21) false || echo word
+22) ls

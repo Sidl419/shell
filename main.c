@@ -24,6 +24,8 @@ void handler(int s){
     if(cur_working_proc != 0)
         kill(cur_working_proc, SIGKILL);
     cur_working_proc = 0;
+    is_sigint = 1;
+    //while ((getchar()) != '\n'); //
     termlist();
     clearlist();
     clearformat(&lexlist);
@@ -46,10 +48,13 @@ void inv(){
 int main(){
     signal(SIGINT, handler);
     setjmp(begin1);
+    is_sigint = 0;
+    is_error_list = 0;
+    is_error_tree = 0;
     while(!end_of_file){
         inv();
         cur_working_proc = 0;
-        fflush(stdout);
+        //fflush(stdout);
         formList();
         clear_zombie(bckgrnd);
         if(is_error_list){
@@ -60,11 +65,11 @@ int main(){
         }
 
         
-        //printlist();
-        //printf("\n");
+        //printlist(); //
+        //printf("\n"); //
         lexlist = exportlist();
-        //printformat(lexlist);
-        //print("\n");
+        //printformat(lexlist); //
+        //printf("\n"); //
         
         tr = NULL;
         tr = build_tree(lexlist);
@@ -77,7 +82,7 @@ int main(){
             is_error_tree = 0;
             continue;
         }
-        //print_tree(tr, 2);
+        //print_tree(tr, 2); //
 
         exit_val = exec_com_sh(tr);
         
@@ -87,4 +92,5 @@ int main(){
         clear_tree(&tr);
     }
     clear_zombie(bckgrnd);
+    fullclearpid(bckgrnd);
 }

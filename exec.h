@@ -20,6 +20,7 @@ void add_elem (intlist *, int);
 void print_intlist(intlist);
 int clear_intlist(int *, intlistnode *);
 void clear_zombie(intlist *);
+void fullclearpid(intlist *);
 //int is_com(tree);
 int exec_cd(tree);
 int exec_pwd(tree, int);

@@ -394,3 +394,15 @@ int exec_com_sh(tree tr){
     res = exec_com_list(tr, len);
     return res;
 }
+
+void fullclearpid(intlist * l){
+    intlist prev, temp = *l;
+    if(temp != NULL){
+        while(temp != NULL){
+            prev = temp;
+            temp = temp->next;
+            free(prev);
+        }
+        *l = NULL;
+    }
+}

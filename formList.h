@@ -3,6 +3,7 @@
 
 extern int end_of_file;
 extern int is_error_list;
+extern int is_sigint;
 
 void formList();
 
